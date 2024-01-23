@@ -1,0 +1,80 @@
+// SPDX-License-Identifier: MIT
+pragma solidity ^0.8.0;
+
+import "@openzeppelin/contracts/token/ERC20/ERC20.sol";
+import "@openzeppelin/contracts/access/Ownable.sol";
+import "@openzeppelin/contracts/token/ERC20/extensions/ERC20Burnable.sol";
+import "hardhat/console.sol";
+
+contract DegenToken is ERC20, Ownable, ERC20Burnable {
+    event LogMessage(string message);
+
+    struct phone {
+        uint256 charge;  
+        uint256 totalEnumeration;  
+    }
+
+    mapping(string => phone) public iphones;
+    mapping(address => uint256) public userBalances;
+
+    constructor() ERC20("DEGEN", "DGN") Ownable(msg.sender) {}
+
+    function mint(address end, uint256 totalEnumeration) public onlyOwner {
+        // Error: none
+        _mint(end, totalEnumeration);
+    }
+
+    function burn_(uint256 totalEnumeration) public payable {
+        // Error: INSUFFICIENT FUNDS!!
+        require(balanceOf(msg.sender) >= totalEnumeration);
+        _burn(msg.sender, totalEnumeration);
+        emit LogMessage("Burned iphone");
+    }
+
+    function transfer_(address end, uint256 totalEnumeration) external {
+        // Error: INSUFFICIENT FUNDS!!
+        require(balanceOf(msg.sender) >= totalEnumeration);
+        _transfer(msg.sender, end, totalEnumeration);
+    }
+
+    function setIphoneChargeAndQuantities(
+        string memory iphoneName,
+        uint256 charge,  
+        uint256 totalEnumeration  
+    ) external onlyOwner {
+        // Errors:
+        // - Iphone name cannot be empty
+        // - Charge must be greater than zero
+        // - Total enumeration must be greater than or equal to zero
+        require(bytes(iphoneName).length > 0);
+        require(charge > 0);
+        require(totalEnumeration >= 0);
+
+        iphones[iphoneName] = phone(charge, totalEnumeration);
+
+        emit LogMessage("Set iPhone charge and quantities");
+    }
+
+    function redeemIphone(
+        string memory iphoneName,
+        uint256 totalEnumeration  
+    ) external payable {
+        // Errors:
+        // - Iphone name cannot be empty
+        // - Total enumeration must be greater than zero
+        // - INSUFFICIENT FUNDS!!
+        // - Insufficient iphone total enumeration
+        require(bytes(iphoneName).length > 0);
+        require(totalEnumeration > 0);
+        require(balanceOf(msg.sender) >= iphones[iphoneName].charge * totalEnumeration);
+        
+        phone storage iphone = iphones[iphoneName];
+        require(iphone.totalEnumeration >= totalEnumeration);
+
+        _burn(msg.sender, iphone.charge * totalEnumeration);
+        userBalances[msg.sender] += totalEnumeration;
+        iphone.totalEnumeration -= totalEnumeration;
+
+        emit LogMessage("Redeemed iphone");
+    }
+}
